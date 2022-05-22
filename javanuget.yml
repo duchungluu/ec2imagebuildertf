@@ -1,0 +1,37 @@
+name: InstallNuget
+description: Install the latest Nuget and set Path
+schemaVersion: 1.0
+
+phases:
+  - name: build
+    steps:
+      - name: InstallNuget
+        action: ExecutePowerShell
+        inputs:
+          commands:
+            - $sourceNugetExe = "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe"
+            - $targetNugetExe = "C:\nuget.exe"
+            - Invoke-WebRequest $sourceNugetExe -OutFile $targetNugetExe
+            - Set-Alias nuget $targetNugetExe -Scope Global -Verbose
+            - '[Environment]::SetEnvironmentVariable("PATH", $Env:PATH + ";C:\", [EnvironmentVariableTarget]::Machine)'
+            
+      - name: InstallJava
+        action: ExecutePowerShell
+        inputs:
+          commands:
+            - Invoke-WebRequest "https://api.adoptopenjdk.net/v3/installer/latest/18/ga/windows/x64/jdk/hotspot/normal/adoptopenjdk?project=jdk" -OutFile "C:\openjdk18.msi"
+            - Start-Process -Wait -FilePath msiexec -ArgumentList /i, "C:\openjdk18.msi", 'ADDLOCAL="FeatureMain,FeatureEnvironment,FeatureJarFileRunWith,FeatureJavaHome"', 'INSTALLDIR="C:\Program Files\Java\jdk-18\"', /quiet, /norestart -Verb RunAs
+      
+      - name: Delete
+        action: DeleteFile
+        inputs:
+          - path: 'C:\openjdk18.msi'
+          
+  - name: validate
+    steps:
+      - name: ValidateNuget
+        action: ExecutePowerShell
+        inputs:
+          commands:
+            - nuget help | select -First 1
+            - java --version
